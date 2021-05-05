@@ -1,5 +1,5 @@
 {
-    "name": "free-work-agsi/locationiq-provider",
+    "name": "geocoder-php/locationiq-provider",
     "type": "library",
     "description": "Geocoder LocationIQ adapter",
     "keywords": [
