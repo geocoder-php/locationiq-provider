@@ -148,7 +148,6 @@ final class LocationIQ extends AbstractHttpProvider implements Provider
      */
     private function arrayResultToArray(array $arrayResult): Location
     {
-        //print_r($arrayResult);die;
         $builder = new AddressBuilder($this->getName());
 
         $builder->setPostalCode($arrayResult['address']['postcode'] ?? null);
