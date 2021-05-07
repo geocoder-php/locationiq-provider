@@ -72,16 +72,15 @@ final class LocationIQ extends AbstractHttpProvider implements Provider
     private function autocompleteQuery(GeocodeQuery $query): Collection
     {
         $address = $query->getText();
-        $countrycodes = $query->getData('countrycodes');
-        $tag = $query->getData('tag');
-        $url = sprintf($this->getGeocodeAutocompleteEndpointUrl(), urlencode($address), $query->getLimit(), $countrycodes, $tag);
+        $url = sprintf($this->getGeocodeAutocompleteEndpointUrl(), urlencode($address), $query->getLimit());
+        $url = $this->addLocationIQParams($query, $url);
 
         $content = $this->executeQuery($url, $query->getLocale());
         $places = json_decode($content, true);
 
         $results = [];
         foreach ($places as $place) {
-            $results[] = $this->arrayResultToArray($place);
+            $results[] = $this->resultToArray($place);
         }
 
         return new AddressCollection($results);
@@ -96,6 +95,7 @@ final class LocationIQ extends AbstractHttpProvider implements Provider
         $countrycodes = $query->getData('countrycodes');
         $tag = $query->getData('tag');
         $url = sprintf($this->getGeocodeSearchEndpointUrl(), urlencode($address), $query->getLimit(), $countrycodes, $tag);
+        $url = $this->addLocationIQParams($query, $url);
 
         $content = $this->executeQuery($url, $query->getLocale());
 
@@ -143,10 +143,29 @@ final class LocationIQ extends AbstractHttpProvider implements Provider
     }
 
     /**
+     * Add url param specific to LocationIQ
+     * @param GeocodeQuery $query
+     * @param string $url
+     * @return string
+     */
+    private function addLocationIQParams(GeocodeQuery $query, string $url): string
+    {
+        if ($countrycodes = $query->getData('countrycodes')) {
+            $url .= sprintf('&countrycodes=%s', $countrycodes);
+        }
+
+        if ($tag = $query->getData('tag')) {
+            $url .= sprintf('&tag=%s', $tag);
+        }
+
+        return $url;
+    }
+
+    /**
      * @param array $arrayResult
      * @return Location
      */
-    private function arrayResultToArray(array $arrayResult): Location
+    private function resultToArray(array $arrayResult): Location
     {
         $builder = new AddressBuilder($this->getName());
 
@@ -168,7 +187,7 @@ final class LocationIQ extends AbstractHttpProvider implements Provider
             $builder->setBounds($arrayResult['boundingbox'][0], $arrayResult['boundingbox'][1], $arrayResult['boundingbox'][2], $arrayResult['boundingbox'][3]);
         }
 
-        if (in_array($arrayResult['type'], ['city', 'town', 'administrative'])) {
+        if (in_array($arrayResult['type'], ['city', 'town', 'village', 'administrative'])) {
             $builder->setLocality($arrayResult['address']['name']);
             $builder->addAdminLevel(2, $arrayResult['address']['name']);
         } else if (!empty($arrayResult['address']['city'])) {
@@ -254,12 +273,12 @@ final class LocationIQ extends AbstractHttpProvider implements Provider
 
     private function getGeocodeSearchEndpointUrl(): string
     {
-        return self::BASE_API_URL.'/search.php?q=%s&format=xmlv1.1&addressdetails=1&normalizecity=1&limit=%d&countrycodes=%s&tag=%s&key='.$this->apiKey;
+        return self::BASE_API_URL.'/search.php?q=%s&format=xmlv1.1&addressdetails=1&normalizecity=1&limit=%d&key='.$this->apiKey;
     }
 
     private function getGeocodeAutocompleteEndpointUrl(): string
     {
-        return self::BASE_API_URL.'/autocomplete.php?q=%s&addressdetails=1&normalizecity=1&limit=%d&countrycodes=%s&tag=%s&key='.$this->apiKey;
+        return self::BASE_API_URL.'/autocomplete.php?q=%s&addressdetails=1&normalizecity=1&limit=%d&key='.$this->apiKey;
     }
 
     private function getReverseEndpointUrl(): string
