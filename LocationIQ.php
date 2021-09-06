@@ -78,6 +78,7 @@ final class LocationIQ extends AbstractHttpProvider implements Provider
         $content = $this->executeQuery($url, $query->getLocale());
         $places = json_decode($content, true);
 
+
         $results = [];
         foreach ($places as $place) {
             $results[] = $this->resultToArray($place);
@@ -158,6 +159,10 @@ final class LocationIQ extends AbstractHttpProvider implements Provider
             $url .= sprintf('&tag=%s', $tag);
         }
 
+        if ($dedupe = $query->getData('dedupe')) {
+            $url .= sprintf('&dedupe=%s', $dedupe);
+        }
+
         return $url;
     }
 
@@ -169,7 +174,6 @@ final class LocationIQ extends AbstractHttpProvider implements Provider
     {
         $builder = new AddressBuilder($this->getName());
 
-        $builder->setPostalCode($arrayResult['address']['postcode'] ?? null);
         $builder->setSubLocality($arrayResult['address']['suburb'] ?? null);
         $builder->setCountry($arrayResult['address']['country'] ?? null);
         $builder->setCoordinates($arrayResult['lat'], $arrayResult['lon']);
@@ -187,12 +191,13 @@ final class LocationIQ extends AbstractHttpProvider implements Provider
             $builder->setBounds($arrayResult['boundingbox'][0], $arrayResult['boundingbox'][1], $arrayResult['boundingbox'][2], $arrayResult['boundingbox'][3]);
         }
 
-        if (in_array($arrayResult['type'], ['city', 'town', 'village', 'administrative'])) {
-            $builder->setLocality($arrayResult['address']['name']);
+        if (in_array($arrayResult['type'], ['administrative'])) {
             $builder->addAdminLevel(2, $arrayResult['address']['name']);
-        } else if (!empty($arrayResult['address']['city'])) {
-            $builder->setLocality($arrayResult['address']['city']);
-            $builder->addAdminLevel(2, $arrayResult['address']['city']);
+        }
+
+        if (in_array($arrayResult['type'], ['city', 'town', 'village'])) {
+            $builder->setLocality($arrayResult['address']['name']);
+            $builder->setPostalCode($arrayResult['address']['postcode'] ?? null);
         }
 
         if ($arrayResult['type'] == 'state') {
