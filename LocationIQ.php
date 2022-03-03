@@ -205,9 +205,14 @@ final class LocationIQ extends AbstractHttpProvider implements Provider
             $adminLevel1 = $arrayResult['address']['state'] ?? null;
             if (null !== $adminLevel1) {
                 $builder->addAdminLevel(1, $adminLevel1);
-                $adminLevel2 = $arrayResult['address']['name'] ?? null;
+                $adminLevel2 = $arrayResult['address']['city'] ?? $arrayResult['address']['name'] ?? null;
                 if (null !== $adminLevel2) {
                     $builder->addAdminLevel(2, $adminLevel2);
+
+                    if ($adminLevel2 !== $arrayResult['address']['name']) {
+
+                        $builder->setLocality($arrayResult['address']['name']);
+                    }
                 }
             }
         } elseif (in_array($arrayResult['type'], ['city', 'town', 'village'])) {
