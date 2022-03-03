@@ -41,7 +41,7 @@ final class LocationIQ extends AbstractHttpProvider implements Provider
 
     /**
      * @param HttpClient $client an HTTP adapter
-     * @param string     $apiKey an API key
+     * @param string $apiKey an API key
      */
     public function __construct(HttpClient $client, string $apiKey)
     {
@@ -78,7 +78,6 @@ final class LocationIQ extends AbstractHttpProvider implements Provider
         $content = $this->executeQuery($url, $query->getLocale());
         $places = json_decode($content, true);
 
-
         $results = [];
         foreach ($places as $place) {
             $results[] = $this->resultToArray($place);
@@ -101,7 +100,7 @@ final class LocationIQ extends AbstractHttpProvider implements Provider
         $content = $this->executeQuery($url, $query->getLocale());
 
         $doc = new \DOMDocument();
-        if (!@$doc->loadXML($content) || null === $doc->getElementsByTagName('searchresults')-> item(0)) {
+        if (!@$doc->loadXML($content) || null === $doc->getElementsByTagName('searchresults')->item(0)) {
             throw InvalidServerResponse::create($url);
         }
 
@@ -191,19 +190,37 @@ final class LocationIQ extends AbstractHttpProvider implements Provider
             $builder->setBounds($arrayResult['boundingbox'][0], $arrayResult['boundingbox'][1], $arrayResult['boundingbox'][2], $arrayResult['boundingbox'][3]);
         }
 
-        if (in_array($arrayResult['type'], ['administrative'])) {
-            $builder->addAdminLevel(2, $arrayResult['address']['name']);
+        if (isset($arrayResult['address']['postcode']) && !empty($arrayResult['address']['postcode'])) {
+            $builder->setPostalCode($arrayResult['address']['postcode']);
         }
 
-        if (in_array($arrayResult['type'], ['city', 'town', 'village'])) {
+        if (in_array($arrayResult['type'], ['state'])) {
+            // state
+            $adminLevel1 = $arrayResult['address']['name'] ?? null;
+            if (null !== $adminLevel1) {
+                $builder->addAdminLevel(1, $adminLevel1);
+            }
+        } elseif (in_array($arrayResult['type'], ['administrative'])) {
+            // admin
+            $adminLevel1 = $arrayResult['address']['state'] ?? null;
+            if (null !== $adminLevel1) {
+                $builder->addAdminLevel(1, $adminLevel1);
+                $adminLevel2 = $arrayResult['address']['name'] ?? null;
+                if (null !== $adminLevel2) {
+                    $builder->addAdminLevel(2, $adminLevel2);
+                }
+            }
+        } elseif (in_array($arrayResult['type'], ['city', 'town', 'village'])) {
+            // city
             $builder->setLocality($arrayResult['address']['name']);
-            $builder->setPostalCode($arrayResult['address']['postcode'] ?? null);
-        }
-
-        if ($arrayResult['type'] == 'state') {
-            $builder->addAdminLevel(1, $arrayResult['address']['name']);
-        } else if(!empty($arrayResult['address']['state'])) {
-            $builder->addAdminLevel(1, $arrayResult['address']['state']);
+            $adminLevel1 = $arrayResult['address']['state'] ?? null;
+            if (null !== $adminLevel1) {
+                $builder->addAdminLevel(1, $adminLevel1);
+                $adminLevel2 = $arrayResult['address']['county'] ?? $arrayResult['address']['city'] ?? null;
+                if (null !== $adminLevel2) {
+                    $builder->addAdminLevel(2, $adminLevel2);
+                }
+            }
         }
 
         return $builder->build();
@@ -262,7 +279,7 @@ final class LocationIQ extends AbstractHttpProvider implements Provider
     }
 
     /**
-     * @param string      $url
+     * @param string $url
      * @param string|null $locale
      *
      * @return string
@@ -278,17 +295,17 @@ final class LocationIQ extends AbstractHttpProvider implements Provider
 
     private function getGeocodeSearchEndpointUrl(): string
     {
-        return self::BASE_API_URL.'/search.php?q=%s&format=xmlv1.1&addressdetails=1&normalizecity=1&limit=%d&key='.$this->apiKey;
+        return self::BASE_API_URL . '/search.php?q=%s&format=xmlv1.1&addressdetails=1&normalizecity=1&limit=%d&key=' . $this->apiKey;
     }
 
     private function getGeocodeAutocompleteEndpointUrl(): string
     {
-        return self::BASE_API_URL.'/autocomplete.php?q=%s&addressdetails=1&normalizecity=1&limit=%d&key='.$this->apiKey;
+        return self::BASE_API_URL . '/autocomplete.php?q=%s&addressdetails=1&normalizecity=1&limit=%d&key=' . $this->apiKey;
     }
 
     private function getReverseEndpointUrl(): string
     {
-        return self::BASE_API_URL.'/reverse.php?format=xmlv1.1&lat=%F&lon=%F&addressdetails=1&normalizecity=1&zoom=%d&key='.$this->apiKey;
+        return self::BASE_API_URL . '/reverse.php?format=xmlv1.1&lat=%F&lon=%F&addressdetails=1&normalizecity=1&zoom=%d&key=' . $this->apiKey;
     }
 
     private function getNodeValue(\DOMNodeList $element)
