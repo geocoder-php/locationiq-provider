@@ -229,12 +229,9 @@ final class LocationIQ extends AbstractHttpProvider implements Provider
             //Landuse Commercial (technopole)
             $builder
                 ->setLocality($arrayResult['address']['name'])
-                ->addAdminLevel(1, $arrayResult['address']['state'] ?? null);
-
-            $adminLevel2 = $arrayResult['address']['county'] ?? $arrayResult['address']['city'] ?? null;
-            if (null !== $adminLevel2) {
-                $builder->addAdminLevel(2, $adminLevel2);
-            }
+                ->addAdminLevel(1, $arrayResult['address']['state'] ?? null)
+                ->addAdminLevel(2, $arrayResult['address']['county'] ?? null)
+            ;
         }
 
         return $builder->build();
