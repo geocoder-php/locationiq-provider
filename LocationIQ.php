@@ -225,6 +225,16 @@ final class LocationIQ extends AbstractHttpProvider implements Provider
                     $builder->addAdminLevel(2, $adminLevel2);
                 }
             }
+        } else if ($arrayResult['class'] === 'landuse' && $arrayResult['type'] === 'commercial') {
+            //Landuse Commercial (technopole)
+            $builder
+                ->setLocality($arrayResult['address']['name'])
+                ->addAdminLevel(1, $arrayResult['address']['state'] ?? null);
+
+            $adminLevel2 = $arrayResult['address']['county'] ?? $arrayResult['address']['city'] ?? null;
+            if (null !== $adminLevel2) {
+                $builder->addAdminLevel(2, $adminLevel2);
+            }
         }
 
         return $builder->build();
